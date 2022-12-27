@@ -1,0 +1,6 @@
+[
+    {
+        "name":"httpd-container",
+        "imageUri":"${REPOSITORY_URI}:latest"
+    }
+]

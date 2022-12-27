@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  apache_page:
+    platform: amd64
+    ports:
+      - "127.0.0.1:8080:80"
+    build:
+      context: .
+      dockerfile: Dockerfile

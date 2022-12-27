@@ -1,0 +1,23 @@
+[
+    {
+        "name": "httpd-container",
+        "image": "httpd:latest",
+        "essential": true,
+        "memory": 128,
+        "portMappings": [
+            {
+                "protocol": "tcp",
+                "containerPort": 80
+            }
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "sandbox-cicd-container-log",
+                "awslogs-region": "ap-northeast-1",
+                "awslogs-create-group": "true",
+                "awslogs-stream-prefix": "firelens"
+            }
+        }
+    }
+]
