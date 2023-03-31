@@ -1,0 +1,14 @@
+[
+    {
+        "name": "${container_name}",
+        "image": "${ecr_image_url}:latest",
+        "essential": true,
+        "memory": 128,
+        "portMappings": [
+            {
+                "protocol": "tcp",
+                "containerPort": 80
+            }
+        ]
+    }
+]
