@@ -122,6 +122,16 @@ resource "aws_iam_role_policy" "codebuild" {
   policy = data.aws_iam_policy_document.codebuild_inline_policy.json
 }
 
+data "aws_iam_policy" "ecr_power_user" {
+  arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+resource "aws_iam_policy_attachment" "ecr_power_user" {
+  name       = "ecr"
+  roles      = ["${aws_iam_role.codebuild.name}"]
+  policy_arn = data.aws_iam_policy.ecr_power_user.arn
+}
+
 data "aws_iam_policy_document" "codebuild_inline_policy" {
   statement {
     sid = "S3"
@@ -175,12 +185,22 @@ data "aws_iam_policy_document" "codebuild_inline_policy" {
   statement {
     sid = "ECR"
     actions = [
-      "ecr:UploadLayerPart",
-      "ecr:PutImage",
-      "ecr:InitiateLayerUpload",
       "ecr:GetAuthorizationToken",
-      "ecr:CompleteLayerUpload",
       "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:GetRepositoryPolicy",
+      "ecr:DescribeRepositories",
+      "ecr:ListImages",
+      "ecr:DescribeImages",
+      "ecr:BatchGetImage",
+      "ecr:GetLifecyclePolicy",
+      "ecr:GetLifecyclePolicyPreview",
+      "ecr:ListTagsForResource",
+      "ecr:DescribeImageScanFindings",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+      "ecr:PutImage"
     ]
     resources = [
       "*"
@@ -202,6 +222,15 @@ data "aws_iam_policy_document" "codebuild_inline_policy" {
       "codebuild:CreateReport",
       "codebuild:UpdateReport",
       "codebuild:BatchPutTestCases",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+  statement {
+    sid = "CodeStar"
+    actions = [
+      "codestar-connections:UseConnection",
     ]
     resources = [
       "*"
@@ -234,6 +263,15 @@ resource "aws_iam_role_policy" "codedeploy" {
 data "aws_iam_policy_document" "codedeploy_inline_policy" {
 
   statement {
+    sid = "IAM"
+    actions = [
+      "iam:PassRole",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+  statement {
     sid = "CloudWatch"
     actions = [
       "logs:PutLogEvents",
@@ -247,8 +285,11 @@ data "aws_iam_policy_document" "codedeploy_inline_policy" {
   statement {
     sid = "ECS"
     actions = [
+      "ecs:CreateTaskSet",
       "ecs:DescribeTaskDefinition",
       "ecs:DescribeServices",
+      "ecs:UpdateServicePrimaryTaskSet",
+      "ecs:DeleteTaskSet",
     ]
     resources = [
       "*"
@@ -263,6 +304,19 @@ data "aws_iam_policy_document" "codedeploy_inline_policy" {
       "ecr:GetAuthorizationToken",
       "ecr:CompleteLayerUpload",
       "ecr:BatchCheckLayerAvailability",
+    ]
+    resources = [
+      "*"
+    ]
+  }
+  statement {
+    sid = "ELB"
+    actions = [
+      "elasticloadbalancing:DescribeTargetGroups",
+      "elasticloadbalancing:DescribeListeners",
+      "elasticloadbalancing:ModifyListener",
+      "elasticloadbalancing:DescribeRules",
+      "elasticloadbalancing:ModifyRule",
     ]
     resources = [
       "*"
@@ -292,7 +346,7 @@ data "aws_iam_policy_document" "task_execution_assume_role" {
     actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
-      identifiers = ["ecs.amazonaws.com"]
+      identifiers = ["ecs-tasks.amazonaws.com"]
     }
   }
 }
@@ -317,12 +371,18 @@ data "aws_iam_policy_document" "task_execution_inline_policy" {
   statement {
     sid = "ECR"
     actions = [
-      "ecr:UploadLayerPart",
-      "ecr:PutImage",
-      "ecr:InitiateLayerUpload",
       "ecr:GetAuthorizationToken",
-      "ecr:CompleteLayerUpload",
       "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:GetRepositoryPolicy",
+      "ecr:DescribeRepositories",
+      "ecr:ListImages",
+      "ecr:DescribeImages",
+      "ecr:BatchGetImage",
+      "ecr:GetLifecyclePolicy",
+      "ecr:GetLifecyclePolicyPreview",
+      "ecr:ListTagsForResource",
+      "ecr:DescribeImageScanFindings"
     ]
     resources = [
       "*"
@@ -335,6 +395,17 @@ data "aws_iam_policy_document" "task_execution_inline_policy" {
     ]
     resources = [
       "*"
+    ]
+  }
+  statement {
+    sid = "CloudWatch"
+    actions = [
+      "logs:PutLogEvents",
+      "logs:CreateLogStream",
+      "logs:CreateLogGroup",
+    ]
+    resources = [
+      "*",
     ]
   }
 }

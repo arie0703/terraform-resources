@@ -3,12 +3,23 @@
         "name": "${container_name}",
         "image": "${ecr_image_url}:latest",
         "essential": true,
-        "memory": 128,
+        "memory": 512,
         "portMappings": [
             {
                 "protocol": "tcp",
                 "containerPort": 80
             }
-        ]
+        ],
+        "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+                "awslogs-group": "firelens-container",
+                "awslogs-region": "ap-northeast-1",
+                "awslogs-create-group": "true",
+                "awslogs-stream-prefix": "firelens"
+            }
+        }
+        
     }
+    
 ]

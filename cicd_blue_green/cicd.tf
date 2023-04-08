@@ -1,5 +1,6 @@
 locals {
-  app_name = "sandbox-cicd"
+  app_name           = "sandbox-cicd"
+  source_branch_name = "deploy"
 }
 
 #######################
@@ -27,8 +28,8 @@ resource "aws_codepipeline" "main" {
       configuration = {
         ConnectionArn        = aws_codestarconnections_connection.github.arn
         FullRepositoryId     = "arie0703/sandbox-nest"
-        BranchName           = "main"
-        OutputArtifactFormat = "CODEBUILD_CLONE_REF"
+        BranchName           = local.source_branch_name
+        OutputArtifactFormat = "CODE_ZIP"
       }
     }
   }
@@ -59,14 +60,16 @@ resource "aws_codepipeline" "main" {
       provider        = "CodeDeployToECS"
       version         = "1"
       run_order       = 1
-      input_artifacts = ["build_artifacts"]
+      input_artifacts = ["build_artifacts", "source_artifacts"]
       configuration = {
         ApplicationName                = aws_codedeploy_app.main.name
         DeploymentGroupName            = aws_codedeploy_deployment_group.main.deployment_group_name
-        TaskDefinitionTemplateArtifact = "source_artifacts"
+        TaskDefinitionTemplateArtifact = "build_artifacts"
         TaskDefinitionTemplatePath     = "taskdef.json"
         AppSpecTemplateArtifact        = "source_artifacts"
-        AppSpecTemplatePath            = "appspec.json"
+        AppSpecTemplatePath            = "appspec.yml"
+        Image1ArtifactName             = "build_artifacts"
+        Image1ContainerName            = "IMAGE_NAME"
       }
     }
   }
@@ -95,26 +98,51 @@ resource "aws_codestarconnections_connection" "github" {
 #      CodeBuild      #
 #######################
 resource "aws_codebuild_project" "main" {
-  name         = local.app_name
-  service_role = aws_iam_role.codebuild.arn
+  name           = local.app_name
+  service_role   = aws_iam_role.codebuild.arn
+  source_version = local.source_branch_name
 
   artifacts {
-    type     = "S3"
-    location = aws_s3_bucket.artifact.bucket
-
+    type = "CODEPIPELINE"
   }
 
   source {
-    type     = "GITHUB"
-    location = var.github_repository_url
+    type      = "CODEPIPELINE"
+    buildspec = ""
   }
 
   environment {
     compute_type                = "BUILD_GENERAL1_MEDIUM"
     type                        = "LINUX_CONTAINER"
-    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+    image                       = "aws/codebuild/amazonlinux2-x86_64-standard:4.0"
     image_pull_credentials_type = "CODEBUILD"
     privileged_mode             = true
+
+    # ダミーの環境変数
+    environment_variable {
+      name  = "ENV"
+      value = "PRODUCTION"
+    }
+
+    environment_variable {
+      name  = "AWS_LOCALSTACK_REGION"
+      value = "ap-northeast-1"
+    }
+
+    environment_variable {
+      name  = "AWS_LOCALSTACK_ENDPOINT"
+      value = "None"
+    }
+
+    environment_variable {
+      name  = "SQS_QUEUE_URL"
+      value = "dummy"
+    }
+
+    environment_variable {
+      name  = "SLACK_WORKFLOW_URL"
+      value = "dummy"
+    }
   }
 
   logs_config {
