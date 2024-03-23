@@ -1,3 +1,0 @@
-[submodule "sandbox/codedeploy/ec2/app"]
-	path = sandbox/codedeploy/ec2/app
-	url = https://git-codecommit.ap-northeast-1.amazonaws.com/v1/repos/codedeploy-repo
