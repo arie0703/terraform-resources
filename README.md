@@ -1,2 +1,6 @@
-# sandbox-terraform
-Terraform実験場 / インフラ学習用
+# terraform-resources
+TerraformによるAWSリソースの管理をするリポジトリ。
+
+ECSやIAMロールなど、各サービスで利用する共通設定はmoduleを活用する。
+
+tfstateはS3で管理する。
