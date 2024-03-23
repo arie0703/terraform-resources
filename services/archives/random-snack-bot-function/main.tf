@@ -22,7 +22,6 @@ resource "aws_dynamodb_table" "this" {
 resource "aws_cloudwatch_event_rule" "this" {
   description         = "everyday 15:00"
   event_bus_name      = "default"
-  is_enabled          = true
   name                = "everyday15"
   schedule_expression = "cron(0 6 ? * MON-FRI *)"
 }
