@@ -105,16 +105,10 @@ data "aws_iam_policy_document" "task_inline_policy" {
   statement {
     sid = "DynamoDB"
     actions = [
-      "dynamodb:BatchGetItem",
-      "dynamodb:BatchWriteItem",
-      "dynamodb:ConditionCheckItem",
-      "dynamodb:PutItem",
-      "dynamodb:DescribeTable",
-      "dynamodb:DeleteItem",
-      "dynamodb:GetItem",
-      "dynamodb:Scan",
-      "dynamodb:Query",
-      "dynamodb:UpdateItem",
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel",
     ]
     resources = [
       "*"
@@ -122,3 +116,39 @@ data "aws_iam_policy_document" "task_inline_policy" {
   }
 }
 
+resource "aws_iam_role" "gha" {
+  name               = "gha-${var.app_name}-role"
+  assume_role_policy = data.aws_iam_policy_document.gha.json
+}
+
+resource "aws_iam_role_policy_attachment" "gha_ecs" {
+  role       = aws_iam_role.gha.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "gha_ecr" {
+  role       = aws_iam_role.gha.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+data "aws_iam_policy_document" "gha" {
+  statement {
+    sid     = "OidcAllowAssume"
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.gha.arn]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = [var.github_repo]
+    }
+  }
+}
+
+# モジュール外で作成されている想定
+data "aws_iam_openid_connect_provider" "gha" {
+  url = "https://token.actions.githubusercontent.com"
+}
