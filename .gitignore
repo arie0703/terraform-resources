@@ -13,3 +13,5 @@ node_modules/
 
 # Lambda Function
 *.zip
+
+**/build/*
