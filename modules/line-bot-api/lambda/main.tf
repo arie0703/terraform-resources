@@ -25,6 +25,27 @@ resource "aws_lambda_function" "default" {
   role             = aws_iam_role.lambda.arn
   handler          = "index.handler"
   timeout          = 60
+
+  environment {
+    variables = {
+      LINE_USER_ID       = ""
+      LINE_CHANNEL_TOKEN = ""
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      environment,
+    ]
+  }
+}
+
+resource "aws_lambda_permission" "default" {
+  statement_id  = "default-scheduler"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.default.function_name
+  principal     = "scheduler.amazonaws.com"
+  source_arn    = var.scheduler_arn
 }
 
 resource "aws_cloudwatch_log_group" "lambda" {
