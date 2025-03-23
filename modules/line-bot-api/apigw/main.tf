@@ -6,6 +6,10 @@ resource "aws_api_gateway_rest_api" "default" {
     cost_confirmation_invoke_arn = var.cost_confirmation_invoke_arn
     iam_role_arn                 = aws_iam_role.apigw.arn
   })
+
+  endpoint_configuration {
+    types = ["REGIONAL"]
+  }
 }
 
 resource "aws_api_gateway_deployment" "default" {
