@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -12,19 +13,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer"
 	"github.com/aws/aws-sdk-go-v2/service/costexplorer/types"
+
+	"github.com/line/line-bot-sdk-go/v8/linebot/messaging_api"
 )
 
 // Response はLambdaのレスポンス用構造体
 type Response struct {
-	Month string  `json:"month"`
-	Cost  float64 `json:"cost"`
+	Month string `json:"month"`
+	Cost  string `json:"cost"`
 }
 
 type LambdaResponse struct {
 	StatusCode int    `json:"statusCode"`
 	Body       string `json:"body"`
 }
-
 
 func getMonthlyCost() (*Response, error) {
 	// AWS SDK の設定をロード
@@ -61,23 +63,27 @@ func getMonthlyCost() (*Response, error) {
 	}
 
 	cost := result.ResultsByTime[0].Total["UnblendedCost"].Amount
-	costFloat := 0.0
-	fmt.Sscanf(*cost, "%f", &costFloat)
 
 	// レスポンスを作成
 	return &Response{
 		Month: now.Format("2006-01"),
-		Cost:  costFloat,
+		Cost:  *cost,
 	}, nil
 }
 
 // Lambda ハンドラ
 func handler(ctx context.Context) (LambdaResponse, error) {
 	resp, err := getMonthlyCost()
+
+	// Line messaging API の設定
+	bot, err := messaging_api.NewMessagingApiAPI(
+		os.Getenv("LINE_CHANNEL_TOKEN"),
+	)
+
 	if err != nil {
 		return LambdaResponse{
 			StatusCode: 500,
-			Body: "コスト取得に失敗しました",
+			Body:       "コスト取得に失敗しました",
 		}, err
 	}
 
@@ -86,13 +92,27 @@ func handler(ctx context.Context) (LambdaResponse, error) {
 	if err != nil {
 		return LambdaResponse{
 			StatusCode: 500,
-			Body: "コスト取得に失敗しました",
+			Body:       "コスト取得に失敗しました",
 		}, fmt.Errorf("JSONエンコードに失敗: %v", err)
 	}
 
+	message := resp.Month + "のコストは" + string(resp.Cost) + "です!"
+
+	bot.PushMessage(
+		&messaging_api.PushMessageRequest{
+			To: os.Getenv("LINE_USER_ID"),
+			Messages: []messaging_api.MessageInterface{
+				messaging_api.TextMessage{
+					Text: message,
+				},
+			},
+		},
+		"", // x-line-retry-key
+	)
+
 	return LambdaResponse{
 		StatusCode: 200,
-		Body: string(jsonResp),
+		Body:       string(jsonResp),
 	}, nil
 }
 
