@@ -42,6 +42,16 @@ data "aws_iam_policy_document" "lambda" {
 
     resources = ["arn:aws:logs:*:*:*"]
   }
+
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = ["*"]
+  }
 }
 
 

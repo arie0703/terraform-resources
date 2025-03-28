@@ -5,7 +5,12 @@ module "supabase_request_batch" {
   schedule_expression = "rate(7 days)"
   runtime             = "nodejs22.x"
   lambda_variables = {
-    SUPABASE_URL = ""
-    SUPABASE_KEY = ""
+    SECRET_NAME = module.secrets.name
   }
+}
+
+module "secrets" {
+  source = "../../modules/common/secretsmanager"
+
+  secret_name = var.service_name
 }
