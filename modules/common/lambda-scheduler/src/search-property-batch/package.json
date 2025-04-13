@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@line/bot-sdk": "^9.8.0",
+    "dotenv": "^16.5.0",
+    "jsdom": "^26.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}
