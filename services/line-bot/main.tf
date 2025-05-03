@@ -12,11 +12,10 @@ module "eventbridge_cost_confirmation" {
   lambda_arn    = module.lambda_cost_confirmation.function_arn
 }
 
-# API Gatewayは現状Line botで使用していないので一旦コメントアウト
+module "lambda_search_property-batch" {
+  source = "../../modules/common/lambda-scheduler"
 
-# module "apigw" {
-#   source = "../../modules/line-bot-api/apigw"
-
-#   service_name                 = var.service_name
-#   cost_confirmation_invoke_arn = module.lambda_cost_confirmation.invoke_arn
-# }
+  service_name        = "search-property-batch"
+  schedule_expression = "rate(7 days)"
+  runtime             = "nodejs22.x"
+}
