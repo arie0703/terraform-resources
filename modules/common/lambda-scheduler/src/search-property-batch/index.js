@@ -13,7 +13,7 @@ const sendMessage = (propertyInfoList) => {
   const messages = propertyInfoList.map((info) => {
     return {
       type: "text",
-      text: `物件名: ${info.title}\n[アクセス] \n${info.accessList.join(',')}\n\n詳細リンク\n${info.links.join('\n')}`
+      text: `物件名: ${info.title}\n\n[アクセス] \n${info.accessList.join(',')}\n\n[家賃]\n${info.priceList.join('\n')}\n\n詳細リンク\n${info.links.join('\n')}`
     }
   })
 
@@ -43,18 +43,27 @@ const getPropertyInfoList = (elements) => {
   const baseURL = process.env.BASE_URL;
 
   return elements.map((item) => {
-    const title = item.querySelectorAll('.cassetteitem_content-title')[0].textContent.trim();
+    const title = item.querySelector('.cassetteitem_content-title').textContent.trim();
 
     // ["A駅 歩5分", "B駅 歩10分"] のような形の配列
     const accessList = Array.from(item.querySelectorAll('.cassetteitem_detail-col2 div.cassetteitem_detail-text')).map(col => {
       return col.textContent.trim()
     });
 
+    const priceElements = Array.from(item.querySelectorAll('.cassetteitem_price.cassetteitem_price--rent'));
+    const adminPrice = item.querySelector('.cassetteitem_price.cassetteitem_price--administration').textContent.trim();
+
+    // 賃料/管理費のリスト
+    const priceList = priceElements.map(col => {
+      return col.textContent.trim() + "/" + adminPrice;
+    })
+
     const links = Array.from(item.querySelectorAll('a.js-cassette_link_href.cassetteitem_other-linktext')).map(link => baseURL + link.href);
 
     return {
       title: title,
       accessList: accessList,
+      priceList: priceList,
       links: links
     }
   })
