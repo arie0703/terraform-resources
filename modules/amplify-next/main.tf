@@ -1,7 +1,7 @@
 #tfsec:ignore:aws-ssm-secret-use-customer-key
 resource "aws_secretsmanager_secret" "amplify_credentials" {
-  name        = "${local.service_name}-credentials"
-  description = "${local.service_name} credentials"
+  name        = "${local.service_name}-${var.customer}-credentials"
+  description = "${local.service_name}-${var.customer} credentials"
 }
 
 data "aws_secretsmanager_secret_version" "amplify_credentials" {

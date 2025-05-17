@@ -60,7 +60,7 @@ jobs:
           SAMPLE_VALUE: ${{ env.SAMPLE_VALUE }}
           CUSTOMER: ${{ inputs.CUSTOMER }}
         run: |
-          SECRET_NAME="amplify-next-${CUSTOMER}-amplify-credentials"
+          SECRET_NAME="amplify-next-${CUSTOMER}-credentials"
           EXISTING_SECRET=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text || echo "{}")
           UPDATED_SECRET=$(echo "$EXISTING_SECRET" | jq --arg val "$SAMPLE_VALUE" '. + {NEXT_PUBLIC_SAMPLE_VALUE: $val}')
           aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string "$UPDATED_SECRET"
@@ -70,5 +70,6 @@ jobs:
           GH_PAT: ${{ env.GH_PAT }}
         run: |
           terraform apply \
+            -target=module.amplify-next-${CUSTOMER} \
             -auto-approve \
             -var="access_token=${GH_PAT}"
