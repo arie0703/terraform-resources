@@ -12,8 +12,12 @@ env:
   TF_WORKING_DIR: services/amplify-next
   AWS_REGION: ap-northeast-1
   AWS_ROLE_ARN: arn:aws:iam::226259849760:role/gha-amplify-next-role
-  GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+  GH_PAT: ${{ secrets.GH_PAT }}
   SAMPLE_VALUE: ${{ secrets.SAMPLE_VALUE }}
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -31,6 +35,7 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-session-name: create-amplify
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -43,27 +48,29 @@ jobs:
       - name: Apply targeted secret creation
         env:
           CUSTOMER: ${{ inputs.CUSTOMER }}
-          GITHUB_PAT: ${{ env.GITHUB_PAT }}
+          GH_PAT: ${{ env.GH_PAT }}
         run: |
           terraform apply \
             -target=module.amplify-next-${CUSTOMER}.aws_secretsmanager_secret.amplify_credentials \
             -auto-approve \
-            -var="access_token=${GITHUB_PAT}"
+            -var="access_token=${GH_PAT}"
 
       - name: Add NEXT_PUBLIC_SAMPLE_VALUE to Secrets Manager
         env:
           SAMPLE_VALUE: ${{ env.SAMPLE_VALUE }}
           CUSTOMER: ${{ inputs.CUSTOMER }}
         run: |
-          SECRET_NAME="amplify-next-${CUSTOMER}-amplify-credentials"
+          SECRET_NAME="amplify-next-${CUSTOMER}-credentials"
           EXISTING_SECRET=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text || echo "{}")
           UPDATED_SECRET=$(echo "$EXISTING_SECRET" | jq --arg val "$SAMPLE_VALUE" '. + {NEXT_PUBLIC_SAMPLE_VALUE: $val}')
           aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string "$UPDATED_SECRET"
 
       - name: Terraform Apply (Full)
         env:
-          GITHUB_PAT: ${{ env.GITHUB_PAT }}
+          GH_PAT: ${{ env.GH_PAT }}
+          CUSTOMER: ${{ inputs.CUSTOMER }}
         run: |
           terraform apply \
+            -target=module.amplify-next-${CUSTOMER} \
             -auto-approve \
-            -var="access_token=${GITHUB_PAT}"
+            -var="access_token=${GH_PAT}"

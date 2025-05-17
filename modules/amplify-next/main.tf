@@ -1,7 +1,7 @@
 #tfsec:ignore:aws-ssm-secret-use-customer-key
 resource "aws_secretsmanager_secret" "amplify_credentials" {
-  name        = "${local.service_name}-credentials"
-  description = "${local.service_name} credentials"
+  name        = "${local.service_name}-${var.customer}-credentials"
+  description = "${local.service_name}-${var.customer} credentials"
 }
 
 data "aws_secretsmanager_secret_version" "amplify_credentials" {
@@ -22,7 +22,7 @@ resource "aws_amplify_app" "this" {
 
   environment_variables = {
     NEXT_PUBLIC_COMPANY_ID   = var.company_id
-    NEXT_PUBLIC_SAMPLE_VALUE = jsondecode(data.aws_secretsmanager_secret_version.amplify_credentials.secret_string)["SAMPLE_VALUE"]
+    NEXT_PUBLIC_SAMPLE_VALUE = jsondecode(data.aws_secretsmanager_secret_version.amplify_credentials.secret_string)["NEXT_PUBLIC_SAMPLE_VALUE"]
   }
 
   access_token = var.access_token
