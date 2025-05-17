@@ -68,6 +68,7 @@ jobs:
       - name: Terraform Apply (Full)
         env:
           GH_PAT: ${{ env.GH_PAT }}
+          CUSTOMER: ${{ inputs.CUSTOMER }}
         run: |
           terraform apply \
             -target=module.amplify-next-${CUSTOMER} \
