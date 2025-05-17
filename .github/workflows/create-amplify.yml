@@ -1,0 +1,69 @@
+name: Deploy Amplify Next
+
+on:
+  workflow_dispatch:
+    inputs:
+      CUSTOMER:
+        description: "Customer identifier"
+        required: true
+        type: string
+
+env:
+  TF_WORKING_DIR: services/amplify-next
+  AWS_REGION: ap-northeast-1
+  AWS_ROLE_ARN: arn:aws:iam::226259849760:role/gha-amplify-next-role
+  GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+  SAMPLE_VALUE: ${{ secrets.SAMPLE_VALUE }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.5
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Apply targeted secret creation
+        env:
+          CUSTOMER: ${{ inputs.CUSTOMER }}
+          GITHUB_PAT: ${{ env.GITHUB_PAT }}
+        run: |
+          terraform apply \
+            -target=module.amplify-next-${CUSTOMER}.aws_secretsmanager_secret.amplify_credentials \
+            -auto-approve \
+            -var="access_token=${GITHUB_PAT}"
+
+      - name: Add NEXT_PUBLIC_SAMPLE_VALUE to Secrets Manager
+        env:
+          SAMPLE_VALUE: ${{ env.SAMPLE_VALUE }}
+          CUSTOMER: ${{ inputs.CUSTOMER }}
+        run: |
+          SECRET_NAME="amplify-next-${CUSTOMER}-amplify-credentials"
+          EXISTING_SECRET=$(aws secretsmanager get-secret-value --secret-id "$SECRET_NAME" --query SecretString --output text || echo "{}")
+          UPDATED_SECRET=$(echo "$EXISTING_SECRET" | jq --arg val "$SAMPLE_VALUE" '. + {NEXT_PUBLIC_SAMPLE_VALUE: $val}')
+          aws secretsmanager put-secret-value --secret-id "$SECRET_NAME" --secret-string "$UPDATED_SECRET"
+
+      - name: Terraform Apply (Full)
+        env:
+          GITHUB_PAT: ${{ env.GITHUB_PAT }}
+        run: |
+          terraform apply \
+            -auto-approve \
+            -var="access_token=${GITHUB_PAT}"
