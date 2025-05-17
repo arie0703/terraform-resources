@@ -1,0 +1,22 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - eval "$(ssh-agent -s)"
+        - ssh-add <(echo "$SSH_PRIVATE_KEY" | base64 -d)
+        - touch ~/.ssh/config
+        - 'echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+        - ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+    build:
+      commands:
+        - nvm use 18
+        - npm run updateModules:ci
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
