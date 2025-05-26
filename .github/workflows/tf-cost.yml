@@ -41,10 +41,18 @@ jobs:
             exit 1
           fi
 
-          # Get the directory of the first changed Terraform file
-          FIRST_FILE=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | head -n 1)
-          WORKING_DIR=$(dirname "$FIRST_FILE")
-          echo "WORKING_DIRECTORY=$WORKING_DIR" >> $GITHUB_ENV
+          # Get unique directories from all changed Terraform files
+          UNIQUE_DIRS=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | xargs -n1 dirname | sort -u)
+          DIRS_COUNT=$(echo "$UNIQUE_DIRS" | wc -l)
+
+          if [ "$DIRS_COUNT" -gt 1 ]; then
+            echo "Multiple Terraform directories changed:"
+            echo "$UNIQUE_DIRS"
+            echo "Error: Changes must be limited to a single Terraform directory"
+            exit 1
+          fi
+
+          WORKING_DIR=$UNIQUE_DIRS
           echo "working_dir=$WORKING_DIR" >> $GITHUB_OUTPUT
           echo "Found Terraform changes in directory: $WORKING_DIR"
 
