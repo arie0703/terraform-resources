@@ -1,15 +1,11 @@
 name: Terraform Plan and Cost Analysis
 
 on:
-  workflow_dispatch:
-    inputs:
-      working_directory:
-        required: true
-        type: string
-        description: "The directory containing Terraform configuration files"
+  pull_request:
+    branches:
+      - main
 
 env:
-  WORKING_DIRECTORY: ${{ inputs.working_directory }}
   AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
 
 jobs:
@@ -26,10 +22,31 @@ jobs:
         shell: bash
 
     steps:
-      - run: sleep 5
-
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Get changed Terraform files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            **/*.tf
+            **/*.tfvars
+
+      - name: Set working directory
+        id: set-working-dir
+        run: |
+          if [ -z "${{ steps.changed-files.outputs.all_changed_files }}" ]; then
+            echo "No Terraform files changed"
+            exit 1
+          fi
+
+          # Get the directory of the first changed Terraform file
+          FIRST_FILE=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | head -n 1)
+          WORKING_DIR=$(dirname "$FIRST_FILE")
+          echo "WORKING_DIRECTORY=$WORKING_DIR" >> $GITHUB_ENV
+          echo "working_dir=$WORKING_DIR" >> $GITHUB_OUTPUT
+          echo "Found Terraform changes in directory: $WORKING_DIR"
 
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -42,26 +59,26 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
-          terraform_version: 1.0.10
+          terraform_version: 1.10.5
 
       - name: Terraform Format
         id: fmt
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: terraform fmt -recursive -check=true
 
       - name: Terraform Initialize
         id: init
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: terraform init
 
       - name: Terraform Validate
         id: validate
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: terraform validate -no-color
 
       - name: Terraform Plan
         id: plan
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: terraform plan -no-color
 
       - uses: actions/github-script@0.9.0
@@ -84,7 +101,7 @@ jobs:
 
             </details>
 
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.WORKING_DIRECTORY }}\`, Workflow: \`${{ github.workflow }}\`*`;
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ steps.set-working-dir.outputs.working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
               
             github.issues.createComment({
               issue_number: context.issue.number,
@@ -94,11 +111,11 @@ jobs:
             })
 
       - name: Terraform plan
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: terraform plan -out tfplan.binary
 
       - name: Terraform show
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: terraform show -json tfplan.binary > plan.json
 
       - name: Setup Infracost
@@ -107,7 +124,7 @@ jobs:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
       - name: Generate Infracost JSON
-        working-directory: ${{ env.WORKING_DIRECTORY }}
+        working-directory: ${{ steps.set-working-dir.outputs.working_dir }}
         run: infracost breakdown --path plan.json --format json --out-file /tmp/infracost.json
 
       - name: Post Infracost comment
