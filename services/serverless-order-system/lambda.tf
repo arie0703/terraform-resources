@@ -28,6 +28,7 @@ resource "aws_lambda_function" "order_processor" {
       PRODUCTS_TABLE  = aws_dynamodb_table.products.name
       ORDERS_TABLE    = aws_dynamodb_table.orders.name
       ORDER_QUEUE_URL = aws_sqs_queue.order_processing.id
+      SNS_TOPIC_ARN   = aws_sns_topic.order_notifications.arn
     }
   }
 

@@ -1,16 +1,21 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 const { v4: uuidv4 } = require('uuid');
 
 // DynamoDBクライアントの初期化
 const client = new DynamoDBClient({});
 const dynamodb = DynamoDBDocumentClient.from(client);
 
+// SNSクライアントの初期化
+const snsClient = new SNSClient({});
+
 // 環境変数からテーブル名とキューURLを取得
 const USERS_TABLE = process.env.USERS_TABLE;
 const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE;
 const ORDERS_TABLE = process.env.ORDERS_TABLE;
 const ORDER_QUEUE_URL = process.env.ORDER_QUEUE_URL;
+const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
 
 exports.handler = async (event) => {
   console.log('Received event:', JSON.stringify(event, null, 2));
@@ -90,6 +95,9 @@ async function processOrder(orderData) {
 
     // 7. 注文ステータスを完了に更新
     await updateOrderStatus(orderId, 'completed');
+
+    // 8. SNS通知を送信
+    await sendOrderCompletionNotification(orderId, userId, user.balance - product.price, user.purchase_count + 1);
 
     console.log(`Order ${orderId} processed successfully for user ${userId}`);
 
@@ -185,4 +193,34 @@ async function updateOrderStatus(orderId, status) {
   });
 
   await dynamodb.send(command);
+}
+
+async function sendOrderCompletionNotification(orderId, userId, newBalance, newPurchaseCount) {
+  if (!SNS_TOPIC_ARN) {
+    console.log('SNS_TOPIC_ARN not configured, skipping notification');
+    return;
+  }
+
+  try {
+    const message = {
+      version: "1.0",
+      source: "custom",
+      content: {
+        title: `注文完了 - ${orderId}`,
+        description: `注文ID: ${orderId}\nユーザーID: ${userId}\n新しい残高: ${newBalance}\n購入回数: ${newPurchaseCount}\n完了時刻: ${new Date().toISOString()}`
+      }
+    };
+
+    const command = new PublishCommand({
+      TopicArn: SNS_TOPIC_ARN,
+      Message: JSON.stringify(message),
+      Subject: `Order Completed - ${orderId}`
+    });
+
+    await snsClient.send(command);
+    console.log(`SNS notification sent for order ${orderId}`);
+  } catch (error) {
+    console.error(`Failed to send SNS notification for order ${orderId}:`, error);
+    // SNS送信の失敗は注文処理を停止させない
+  }
 }

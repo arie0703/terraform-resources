@@ -80,3 +80,22 @@ resource "aws_iam_role_policy" "lambda_sqs_policy" {
     ]
   })
 }
+
+# SNS送信用ポリシー
+resource "aws_iam_role_policy" "lambda_sns_policy" {
+  name = "${var.project_name}-${var.environment}-lambda-sns-policy"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = aws_sns_topic.order_notifications.arn
+      }
+    ]
+  })
+}
