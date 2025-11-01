@@ -1,3 +1,4 @@
 variable "access_token" {
-  type = string
+  type    = string
+  default = "hoge"
 }
