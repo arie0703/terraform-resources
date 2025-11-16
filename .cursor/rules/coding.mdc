@@ -1,0 +1,17 @@
+---
+alwaysApply: true
+---
+
+# Coding Rule
+
+- ファイル名称は以下のスタイルガイドに準拠する
+  - A providers.tf file that contains all provider blocks and configuration.
+  - A terraform.tf file that contains a single terraform block which defines your required_version and required_providers.
+  - A locals.tf file that contains local values.
+  - A backend.tf file that contains your backend configuration. 
+  - A variables.tf file that contains all variable blocks in alphabetical order.
+- backendはAmazon S3とし、bucket名は"arie-terraform-states", keyは"${作業ディレクトリ名}/terraform.tfstate"とする
+- regionは指定がない場合ap-northeast-1を利用する
+- Lambdaのソースコードは作業ディレクトリ内にsrc/ディレクトリを作成し、その中にソースコードを格納する
+- Lambdaのランタイムは指定がない場合はnode.jsを使用する
+- リソースごとにファイルを分ける。例: dynamodbに関連するリソースはdynamodb.tfに定義する
