@@ -1,0 +1,67 @@
+name: Setup PAT
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_name:
+        description: "GitHub repository name to connect Amplify"
+        required: true
+
+env:
+  SECRETS_ID: 'common-secrets'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1. GitHub App でアクセス Token を作成
+      - name: Generate GitHub App JWT
+        id: generate_jwt
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.CREATE_PAT_GH_APP_ID }}
+          private_key: ${{ secrets.CREATE_PAT_GH_APP_PRIVATE_KEY }}
+
+      # 2. Fine-grained PAT を生成する（GitHub API）
+      - name: Create Fine-grained PAT
+        id: create_pat
+        run: |
+          token_response=$(curl -X POST \
+            -H "Authorization: Bearer ${{ steps.generate_jwt.outputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/${{ secrets.CREATE_PAT_GH_APP_INSTALLATION_ID }}/access_tokens)
+
+          ACCESS_TOKEN=$(echo "$token_response" | jq -r '.token')
+          echo "token=$ACCESS_TOKEN" >> $GITHUB_OUTPUT
+
+      # 3. AWS にログイン（OIDC）
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CREATE_PAT_AWS_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      # 4. PAT を Secrets Manager に保存
+      - name: Store PAT to Secrets Manager
+        run: |
+          # 既存のシークレットを取得（存在しない場合は空のJSONオブジェクト）
+          EXISTING_SECRET=$(aws secretsmanager get-secret-value \
+            --secret-id ${{ env.SECRETS_ID }} \
+            --query SecretString \
+            --output text 2>/dev/null || echo '{}')
+          
+          # JSONを更新してPAT_{repo_name}キーを追加/更新
+          UPDATED_SECRET=$(echo "$EXISTING_SECRET" | jq --arg key "PAT_${{ inputs.repo_name }}" --arg value "${{ steps.create_pat.outputs.token }}" '.[$key] = $value')
+          
+          # 更新したシークレットを保存
+          aws secretsmanager put-secret-value \
+            --secret-id ${{ env.SECRETS_ID }} \
+            --secret-string "$UPDATED_SECRET"
